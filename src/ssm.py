@@ -57,12 +57,17 @@ def campo_vectorial(x, M, s_delta, a):
     return np.einsum("dlj,jd->ld", P, x)
 
 
-def simular(x0, M, s_delta, a, t_max, dt=1e-3, limite=1e8, cada=1):
-    """Integra la EDO de tokens con Runge-Kutta de orden 4 y paso fijo.
+def simular(x0, M, s_delta, a, t_max, dt=1e-3, limite=1e8, cada=1, paso_relativo=None):
+    """Integra la EDO de tokens con Runge-Kutta de orden 4.
 
-    Se detiene antes de t_max si algún valor supera el límite en valor
-    absoluto, lo que sirve para detectar la explosión en tiempo finito.
-    Guarda un punto de cada "cada" pasos.
+    Por defecto el paso es fijo e igual a dt. Si se da paso_relativo, el paso
+    en cada instante es max(dt, paso_relativo * t), lo que permite llegar a
+    tiempos muy grandes con pocos pasos cuando la dinámica es lenta.
+
+    Se detiene si algún valor supera el límite en valor absoluto o deja de ser
+    finito, lo que sirve para detectar la explosión en tiempo finito. En ese
+    caso el último estado guardado es el último estado finito. Guarda un punto
+    de cada "cada" pasos y siempre guarda el estado final.
 
     Devuelve (t, X, exploto) con t de forma (n,), X de forma (n, L, D) y
     exploto como booleano.
@@ -73,22 +78,32 @@ def simular(x0, M, s_delta, a, t_max, dt=1e-3, limite=1e8, cada=1):
     t = 0.0
     ts, xs = [t], [x.copy()]
     exploto = False
-    n_pasos = int(np.ceil(t_max / dt))
+    paso = 0
 
-    for paso in range(1, n_pasos + 1):
-        k1 = f(x)
-        k2 = f(x + 0.5 * dt * k1)
-        k3 = f(x + 0.5 * dt * k2)
-        k4 = f(x + dt * k3)
-        x = x + dt * (k1 + 2 * k2 + 2 * k3 + k4) / 6.0
-        t += dt
+    with np.errstate(over="ignore", invalid="ignore"):
+        while t < t_max:
+            h = dt if paso_relativo is None else max(dt, paso_relativo * t)
+            h = min(h, t_max - t)
+            k1 = f(x)
+            k2 = f(x + 0.5 * h * k1)
+            k3 = f(x + 0.5 * h * k2)
+            k4 = f(x + h * k3)
+            x_nuevo = x + h * (k1 + 2 * k2 + 2 * k3 + k4) / 6.0
 
-        if not np.all(np.isfinite(x)) or np.max(np.abs(x)) > limite:
-            exploto = True
-            break
-        if paso % cada == 0:
-            ts.append(t)
-            xs.append(x.copy())
+            if not np.all(np.isfinite(x_nuevo)) or np.max(np.abs(x_nuevo)) > limite:
+                exploto = True
+                break
+
+            x = x_nuevo
+            t += h
+            paso += 1
+            if paso % cada == 0:
+                ts.append(t)
+                xs.append(x.copy())
+
+    if ts[-1] != t:
+        ts.append(t)
+        xs.append(x.copy())
 
     return np.array(ts), np.array(xs), exploto
 

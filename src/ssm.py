@@ -24,7 +24,17 @@ import numpy as np
 
 
 def softplus(u):
-    """Calcula softplus(u) = ln(1 + e^u) de forma estable numéricamente."""
+    """Calcula softplus(u) = ln(1 + e^u) de forma estable numéricamente.
+
+    Acepta entradas complejas, para poder calcular derivadas exactas con el
+    método del paso complejo (se perturba con una parte imaginaria diminuta).
+    """
+    u = np.asarray(u)
+    if np.iscomplexobj(u):
+        with np.errstate(over="ignore", invalid="ignore"):
+            positivo = u + np.log1p(np.exp(-u))
+            negativo = np.log1p(np.exp(u))
+        return np.where(u.real > 0, positivo, negativo)
     return np.logaddexp(0.0, u)
 
 
@@ -72,7 +82,9 @@ def simular(x0, M, s_delta, a, t_max, dt=1e-3, limite=1e8, cada=1, paso_relativo
     Devuelve (t, X, exploto) con t de forma (n,), X de forma (n, L, D) y
     exploto como booleano.
     """
-    x = np.array(x0, dtype=float)
+    x = np.array(x0)
+    if not np.iscomplexobj(x):
+        x = x.astype(float)
     f = lambda y: campo_vectorial(y, M, s_delta, a)
 
     t = 0.0
@@ -133,7 +145,10 @@ def simular_1d(x0, mu, s_delta, a, t_max, **kwargs):
 
     x0 es un vector de L tokens. Devuelve lo mismo que simular.
     """
-    x0 = np.asarray(x0, dtype=float).reshape(-1, 1)
+    x0 = np.asarray(x0)
+    if not np.iscomplexobj(x0):
+        x0 = x0.astype(float)
+    x0 = x0.reshape(-1, 1)
     M = np.array([[mu]], dtype=float)
     s = np.array([[s_delta]], dtype=float)
     return simular(x0, M, s, np.array([a], dtype=float), t_max, **kwargs)

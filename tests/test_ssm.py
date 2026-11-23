@@ -92,3 +92,21 @@ def test_escenarios_clasificados_y_comportamiento():
     assert explota
     assert t[-1] < 0.2
     assert np.argmax(np.abs(X[-1, :, 0])) == len(X0_RAPIDA) - 1
+
+
+def test_paso_complejo_coincide_con_diferencia_finita():
+    # Derivada de x_L(T) respecto de x_1(0), con tres tokens
+    x0 = np.array([0.8, 0.9, 1.0])
+    T, dt = 2.0, 1e-2
+    h = 1e-30
+    x0c = x0.astype(complex)
+    x0c[0] += 1j * h
+    _, Xc, _ = simular_1d(x0c, 1.0, -3.0, 1.0, T, dt=dt, cada=10**9)
+    derivada_compleja = Xc[-1, -1, 0].imag / h
+
+    eps = 1e-6
+    _, mas, _ = simular_1d(x0 + np.array([eps, 0, 0]), 1.0, -3.0, 1.0, T, dt=dt, cada=10**9)
+    _, menos, _ = simular_1d(x0 - np.array([eps, 0, 0]), 1.0, -3.0, 1.0, T, dt=dt, cada=10**9)
+    derivada_finita = (mas[-1, -1, 0] - menos[-1, -1, 0]) / (2 * eps)
+
+    assert abs(derivada_compleja - derivada_finita) < 1e-6 * max(1.0, abs(derivada_finita))

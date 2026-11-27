@@ -1,28 +1,86 @@
 % ============================================================================
 % 2. SSM continuo, discretización y qué hace "selectivo" a Mamba
-% Responsable: Isabel
-% Prefijo de etiquetas: sec:ssm-, fig:ssm-, eq:ssm-, thm:ssm-
 % ============================================================================
 \section{Modelos de espacio de estados selectivos}
 \label{sec:ssm}
+\subsection{SSMs y mamba teoricos}
 
-\subsection{El SSM continuo}
-\label{sec:ssm-continuo}
+Debido a la ineficiencia computacional de los Transformers en secuencias largas, surgen los 
+modelos de espacio de estados estructurados (S4). Estos modelos ha dado buenos resultados en 
+dominios con datos continuos; sin embargo, son menos eficaces a la hora de modelar datos con 
+densos y con largos contextos.
 
-\todo{Sistema lineal $h'(s)=A h(s)+B x(s)$, $y(s)=C h(s)$; interpretación de $h$, $A$, $B$, $C$.}
+Gu et. al, \cite{gu2023mamba} identificaron la limitación que tienen estos modelos para seleccionar 
+las entradas en cada momento del tiempo y propusieron un mecanismo de selección para los SSMs. Este 
+mecanismo consistió en hacer los parámetros del modelo depender de la entrada, así el modelo puede 
+decidir en cada instante si la entrada es relevante. Además, junto a este mecanismo, propusieron un nuevo 
+algoritmo para hacer reducir la carga computacional del mecanismo. 
 
-\subsection{Discretización}
-\label{sec:ssm-discretizacion}
+A este conjunto le dieron el nombre de Mamba, una arquitectura de aprendizaje profundo cuyas capas 
+tienen la estrucutura mostrada en la Figura\ref{fig:ss6-layer}
 
-\todo{Paso $\Delta$, discretización de $A$ y $B$ y recursión resultante. Dejar claro qué discretización usa Mamba y cuál se simplifica en el modelo de \cite{vo2025token}.}
+[incluir figura con \label{fig:ss6-layer} que se encuentra en figures/SS6_layer.png]
 
-\subsection{Qué hace selectivo a Mamba}
-\label{sec:ssm-selectivo}
+De forma continua, los SSMs se entienden como una función que mapea secuencias de entrada, $x(t)\inR$, a 
+secuencias de salida, $y(t)\inR$, a través de un estado latente $h(t)\inR^N$, siguiendo el siguiente 
+sistema de dos ecuaciones:
 
-\todo{$B$, $C$ y $\Delta$ dependen de la entrada: $\Delta_d(u)=\softplus(S_{\Delta,d}\,u)$, $B=\SB x$, $C=\SC x$, con $\SB,\SC\in\R^{\estado\times D}$.}
+La ecuacion de estado: $h'(t)=A h(t)+B x(t)$, 
+La ecuación de salida: $y(t)=C h(t)+D x(t)$
+
+Podemos entender el entrenamiento como una discretización del sistema lineal. Al discretizar, tomamos 
+los parámetros continuos ($\triangle$, $A$, $B$) y los convertimos a ($A con linea encima$, $B con linea encima$)
+utilizando las funciones fa(triangulo, A) = Alinea y fb(triangulo, A, B), estas (fa, fb) son las reglas 
+de discretización. 
+
+\subsection{Mamba en nuestro caso de uso}
+
+Para el análisis que llevamos a cabo en este trabajo basado en \cite{vo2025token}, consideramos el caso de uso del lenguaje. Por ello, 
+nuestra entrada es una secuencia de tokens $x en negrita = (x_1, ..., x_L) \in R^{DxL}$ y la salida es 
+otra secuencia de tokens $y en negrita = (y_1, ..., y_L) \in R^{DxL}$, donde cada vector $x_l$ o $y_l$ son un token. 
+Para cada canal $d = 1, ..., D$, la salida estimada $yhat_d = (y_d1, ..., ydL) \in R^L$ viene determinada 
+por recurrencia por el input del mismo canal $xhat_d = (x_d1, ..., xdL) \in R^L$ a través de una secuencia 
+de estados ocultos $h_d1, ... h_dL \in R^N$ siguiendo las ecuaciones:
+
+$h_dl = Araya_dl h_d,l-1 + Braya * x_dl, h_d0 = 0$,
+$y_dl = C_l h_dl$,
+
+para $l=1, ..., L$ capas.
+
+En este caso, las matrices $A raya_dl$, $B raya_dl$ y $C_dl$ dependen del input y de la capa y están determinadas
+por las siguientes ecuaciones:
+
+[estas ecuaciones me gustaría que estuviesen centradas]
+$Araya=exp(triangulo_d(x_l)*A_d)$
+$Braya=triangulo_d(x_l)*S_B*x_l$
+$C_l=(S_C*x_l)^T$
+
+donde, $triangulo_d: R^D ---> R$ es la función de tamaño del paso en el canal d y se define como:
+$triangulo_d(u) = softplus(S_{triangulo, d}u) = ln(1 + e^(S_{triangulo, d}u)), u \in R^D$
+
+De forma que los parámetros son las matrices $A_d \in R^{NxN}$, $S_{triangulo, d} \in R{1xD}$, $S_B, S_C \in R^{NxD}$.
+Adicionalmente, vamos a definir $A_d$ como una matriz diagonal con autovalores negativos ($A_d = -a_dId$). 
+Esta restricción no va a quitar la flexibilidad que damos al modelo haciéndolo selectivo puesto que la 
+selectividad viene otorgada de la función $triangulo_d(u)$. Esta función va a controlar cuánto importa la entrada 
+$x en negrita$ de forma que si $triangulo_d$ toma un valor gramde, el sistema reseteará h y se centrará en x. 
+Sin embargo si $triangulo_d$ toma un valor bajo, persistirá el estado h y se ignorará el valor de x.
+
+La matriz que tendrá un rol esencial para el colapso es la matriz de entrada-salida $S_C^T S_B \in R^{DxD}$
 
 \subsection{Límite continuo en profundidad}
 \label{sec:ssm-limite}
+
+De la misma forma que podemos expresar una capa de una ResNet como:
+$z = x + y(x, \theta)$
+y su representación continua como eñ siguiente sistema dinámico:
+
+$x'(t) = y(x(t), \theta(t)), t \in(0, T)$
+
+también podemos expresar una capa de Mamba en función de una ecuación diferencial ordinaria sobre los tokens.
+
+Para ello, eliminamos el estado oculto $h_{dl}$ y obtenemos:
+
+\todo{seccion 3.2 del paper}
 
 \todo{Cómo se llega a la EDO de tokens (solo capa S6 y conexión residual, con la profundidad como tiempo). Esta subsección es el puente hacia la sección~\ref{sec:dinamica}; \todo{Raquel la lee con cuidado}.}
 

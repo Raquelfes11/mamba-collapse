@@ -1,0 +1,33 @@
+% ============================================================================
+% 2. SSM continuo, discretización y qué hace "selectivo" a Mamba
+% Responsable: Isabel
+% Prefijo de etiquetas: sec:ssm-, fig:ssm-, eq:ssm-, thm:ssm-
+% ============================================================================
+\section{Modelos de espacio de estados selectivos}
+\label{sec:ssm}
+
+\subsection{El SSM continuo}
+\label{sec:ssm-continuo}
+
+\todo{Sistema lineal $h'(s)=A h(s)+B x(s)$, $y(s)=C h(s)$; interpretación de $h$, $A$, $B$, $C$.}
+
+\subsection{Discretización}
+\label{sec:ssm-discretizacion}
+
+\todo{Paso $\Delta$, discretización de $A$ y $B$ y recursión resultante. Dejar claro qué discretización usa Mamba y cuál se simplifica en el modelo de \cite{vo2025token}.}
+
+\subsection{Qué hace selectivo a Mamba}
+\label{sec:ssm-selectivo}
+
+\todo{$B$, $C$ y $\Delta$ dependen de la entrada: $\Delta_d(u)=\softplus(S_{\Delta,d}\,u)$, $B=\SB x$, $C=\SC x$, con $\SB,\SC\in\R^{\estado\times D}$.}
+
+\subsection{Límite continuo en profundidad}
+\label{sec:ssm-limite}
+
+\todo{Cómo se llega a la EDO de tokens (solo capa S6 y conexión residual, con la profundidad como tiempo). Esta subsección es el puente hacia la sección~\ref{sec:dinamica}; \todo{Raquel la lee con cuidado}.}
+
+% Con A_d = -a_d I, la dimensión de estado N solo entra en la dinámica a través
+% de M = S_C^T S_B (rango <= N). Esto es lo que usa la sección 4.1.
+\begin{observacion}\label{obs:ssm-rango}
+  Con $A_d=-a_d I$, la dimensión de estado $\estado$ interviene en la dinámica solo a través de $\Mmat=\SC\transp\SB\in\R^{D\times D}$, cuyo rango es como mucho $\min(\estado,D)$.
+\end{observacion}

@@ -1,0 +1,121 @@
+\documentclass[11pt,a4paper]{article}
+
+% Idioma y codificación
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[spanish,es-tabla]{babel}
+
+% Formato de página
+\usepackage[a4paper, margin=2.5cm]{geometry}
+\usepackage{setspace}
+\onehalfspacing
+
+% Matemáticas
+\usepackage{amsmath, amssymb, amsfonts, amsthm}
+\usepackage{bm}
+\usepackage{mathtools}
+
+% Figuras y tablas
+\usepackage{graphicx}
+\graphicspath{{figures/}}
+\usepackage{float}
+\usepackage{booktabs}
+\usepackage{multirow}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{tabularx}   % Tablas con ancho ajustable
+
+% Bibliografía
+\usepackage{csquotes}
+\usepackage[backend=biber, style=ieee]{biblatex}
+\addbibresource{ref.bib}
+
+% Enlaces (hyperref casi siempre al final)
+\usepackage[
+    colorlinks=true,
+    linkcolor=black,
+    citecolor=blue,
+    urlcolor=blue
+]{hyperref}
+
+% ====================== INFORMACIÓN DEL DOCUMENTO ===========================
+\newcommand{\Titulo}{
+    Colapso en Mamba y en Modelos de Espacio de Estados Selectivos
+}
+
+\newcommand{\Autores}{
+    Raquel Fernández Esquinas\\
+    Isabel V. Morell Maudes
+}
+
+\newcommand{\Universidad}{
+    Universidad Pontificia Comillas\\
+    Escuela Técnica Superior de Ingeniería (ICAI)
+}
+
+\newcommand{\Asignatura}{
+    Métodos Diferenciales de la Inteligencia Artificial
+}
+
+\newcommand{\fecha}{
+    Noviembre, 2026
+}
+
+\hypersetup{
+    pdftitle={Colapso en Mamba y en Modelos de Espacio de Estados Selectivos},
+    pdfauthor={Fernández, Morell}
+}
+
+\begin{document}
+
+% ====================== PORTADA ===========================
+\begin{titlepage}
+    \centering
+    \vspace*{1.5cm}
+    % Logo de la universidad (opcional)
+    \includegraphics[width=0.3\textwidth]{figures/logo.png}
+
+    \vspace{1.5cm}
+    {\Large \Universidad\par}
+
+    \vspace{2.5cm}
+    {\Huge \bfseries \Titulo\par}
+
+    \vspace{2cm}
+    {\large
+        \textbf{Autores}\\[0.4cm]
+        \Autores
+    }
+
+    \vfill
+    {\large
+        \textbf{\Asignatura}\\[0.3cm]
+        \fecha
+    }
+    \vspace{1cm}
+\end{titlepage}
+
+% ====================== CAPÍTULOS ===========================
+% Responsable entre paréntesis (ver reparto).
+\input{sections/01_introduccion.tex}
+\newpage
+\input{sections/02_ssm_selectivo.tex}
+\newpage
+\input{sections/03_dinamica_tokens.tex}
+\newpage
+\input{sections/04_simulaciones.tex}
+\newpage
+\input{sections/05_comparacion_attention.tex}
+\newpage
+\input{sections/06_conclusiones.tex}
+\newpage
+
+% ====================== BIBLIOGRAFÍA ===========================
+\section{Referencias}
+\printbibliography
+
+% ====================== ANEXOS ===========================
+% \appendix
+% \input{sections/.tex}
+
+\end{document}

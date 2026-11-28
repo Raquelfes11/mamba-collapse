@@ -1,0 +1,109 @@
+% ============================================================================
+% 4. Simulaciones -- esqueleto fijo, no se edita (solo el orden de los \input).
+% Cada subsección vive en su propio fichero, con su responsable.
+% ============================================================================
+\section{Simulaciones numéricas}
+\label{sec:sim}
+
+Los experimentos usan el simulador común \texttt{src/ssm.py}, que integra la EDO de tokens con Runge--Kutta de orden~4 y detecta la explosión en tiempo finito.
+Cada script de \texttt{experiments/} guarda sus figuras en \texttt{figures/}.
+
+\subsection{Efecto de la dimensión de estado}
+\label{sec:sim-dimension}
+
+\todo{Objetivo: por la observación~\ref{obs:ssm-rango}, $\estado$ solo entra por el rango de $\Mmat$; con $D=1$ no tiene efecto. Se usa $D>1$.}
+
+\paragraph{Diseño.}
+Para cada $\estado$ se comparan tres familias de $\Mmat$, con la escala elegida para que $\tr(\Mmat)/D$ no dependa de $\estado$:
+\begin{itemize}[nosep]
+  \item $\Mmat=-S\transp S$, semidefinida negativa de rango $\estado$ (análogo de $\mu<0$);
+  \item $\Mmat=+S\transp S$, semidefinida positiva de rango $\estado$ (análogo de $\mu>0$);
+  \item $\Mmat=\SC\transp\SB$ con $\SB,\SC$ independientes (no simétrica, en general indefinida).
+\end{itemize}
+Cada realización se clasifica como convergente, divergente o intermedia en $t_{\max}$.
+\todo{Parámetros usados ($D$, $L$, $t_{\max}$, número de realizaciones, $S_\Delta$, $a$).}
+
+\paragraph{Resultados.}
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=\linewidth]{dimension_estado_trayectorias.png}
+  \caption{Norma máxima de los tokens en función de $t$ para distintas dimensiones de estado $\estado$ y las tres familias de $\Mmat$.}
+  \label{fig:dim-trayectorias}
+\end{figure}
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=0.9\linewidth]{dimension_estado_aleatorio.png}
+  \caption{Fracción de realizaciones convergentes, intermedias y divergentes en función de $\estado$, y norma final relativa.}
+  \label{fig:dim-aleatorio}
+\end{figure}
+
+\todo{Comentar los resultados con los números definitivos (ejecutar con más realizaciones). Conectar con la sección~\ref{sec:din-general}.}
+
+\subsection{Efecto de la parametrización}
+\label{sec:sim-param}
+
+\paragraph{Diseño.}
+Caso unidimensional. Se barren el signo de $\mu$, el decaimiento $a$ y la escala $S_\Delta$, y se dibuja la norma de cada token frente a $t$ en escala logarítmica.
+\todo{Tokens iniciales y parámetros de cada escenario.}
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=\linewidth]{param_escenarios.png}
+  \caption{Los tres escenarios del caso unidimensional: convergencia, divergencia lenta y divergencia rápida.}
+  \label{fig:param-escenarios}
+\end{figure}
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=\linewidth]{param_a.png}
+  \caption{Efecto del decaimiento $a$ con $\mu$ fijo, en convergencia (arriba) y divergencia lenta (abajo).}
+  \label{fig:param-a}
+\end{figure}
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=\linewidth]{param_sdelta.png}
+  \caption{Efecto de la escala $S_\Delta$ en el caso convergente.}
+  \label{fig:param-sdelta}
+\end{figure}
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=\linewidth]{param_tasas_largas.png}
+  \caption{Comprobación de las tasas del teorema a tiempos largos.}
+  \label{fig:param-tasas}
+\end{figure}
+
+\todo{Comentar los resultados y contrastarlos con la sección~\ref{sec:din-tasas}.}
+
+\subsection{Longitud de secuencia y memoria de largo contexto}
+\label{sec:sim-long}
+
+\paragraph{Diseño.}
+Se mide cuánta memoria del primer token conserva el último al crecer el número de tokens $L$, con dos medidas: el peso $\abs{\Pmat{}{L}{1}}$ y la sensibilidad $\abs{\partial x_L(T)/\partial x_1(0)}$ (calculada con el método del paso complejo).
+También se estudia cómo cambia el tiempo de explosión de la divergencia rápida con $L$.
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=\linewidth]{long_peso.png}
+  \caption{Peso del primer token sobre el último, $\abs{P_{L1}}$, frente a $L$.}
+  \label{fig:long-peso}
+\end{figure}
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=\linewidth]{long_sensibilidad.png}
+  \caption{Sensibilidad del último token al primero, $\abs{\partial x_L(T)/\partial x_1(0)}$, frente a $L$.}
+  \label{fig:long-sensibilidad}
+\end{figure}
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=0.5\linewidth]{long_explosion.png}
+  \caption{Tiempo de explosión en la divergencia rápida frente a $L$.}
+  \label{fig:long-explosion}
+\end{figure}
+
+\todo{Comentar los resultados: ¿se conserva memoria de largo contexto en cada escenario?}
+

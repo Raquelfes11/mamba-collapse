@@ -1,0 +1,32 @@
+% ============================================================================
+% 3. Dinámica de tokens: resultados del paper y tasas desiguales
+% Responsable: Raquel
+% Prefijo de etiquetas: sec:din-, fig:din-, eq:din-, thm:din-
+% Las simulaciones que ilustran estos resultados van en secciones/04*.tex.
+% ============================================================================
+\section{Dinámica de tokens}
+\label{sec:dinamica}
+
+\subsection{La EDO de tokens}
+\label{sec:din-edo}
+
+% Formulación que usa src/ssm.py (comprobar contra el PDF antes de dejarla definitiva):
+%   dx_{dl}/dt = sum_{j<=l} P_{dlj}(t) x_{dj}(t)
+%   P_{dll} = x_l^T M x_l * Delta_d(x_l)
+%   P_{dlj} = x_l^T M x_j * Delta_d(x_j) * exp(-a_d sum_{k=j+1}^l Delta_d(x_k))  (j<l)
+\todo{Escribir la EDO con la notación de macros.tex (\texttt{\textbackslash Pmat}, \texttt{\textbackslash Mmat}\ldots) y verificar las fórmulas contra \cite{vo2025token}.}
+
+\subsection{Caso unidimensional}
+\label{sec:din-1d}
+
+\todo{Los tres escenarios: convergencia ($\mu<0$), divergencia lenta ($\mu>0$ y $S_\Delta x_{l0}<0$) y divergencia rápida ($\mu>0$ y $S_\Delta x_{l0}>0$ para algún $l$). Enunciar el teorema con sus hipótesis exactas.}
+
+\subsection{Tasas desiguales}
+\label{sec:din-tasas}
+
+\todo{Tasas de convergencia y divergencia por posición (por ejemplo $1/\sqrt{t}$ en convergencia y la cota en $(\ln t)^l$ en divergencia lenta).}
+
+\subsection{Caso general \texorpdfstring{$D>1$}{D>1}}
+\label{sec:din-general}
+
+\todo{Qué se sabe en dimensión mayor que uno y qué queda abierto; enlazar con la sección~\ref{sec:sim-dimension}.}

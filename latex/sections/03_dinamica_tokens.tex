@@ -4,29 +4,86 @@
 % Prefijo de etiquetas: sec:din-, fig:din-, eq:din-, thm:din-
 % Las simulaciones que ilustran estos resultados van en secciones/04*.tex.
 % ============================================================================
+
+% Entorno de teoremas: solo se define si el preámbulo no lo ha definido ya.
+\makeatletter
+\@ifundefined{teorema}{\newtheorem{teorema}{Teorema}[section]}{}
+\makeatother
+
 \section{Dinámica de tokens}
 \label{sec:dinamica}
 
 \subsection{La EDO de tokens}
 \label{sec:din-edo}
 
-% Formulación que usa src/ssm.py (comprobar contra el PDF antes de dejarla definitiva):
-%   dx_{dl}/dt = sum_{j<=l} P_{dlj}(t) x_{dj}(t)
-%   P_{dll} = x_l^T M x_l * Delta_d(x_l)
-%   P_{dlj} = x_l^T M x_j * Delta_d(x_j) * exp(-a_d sum_{k=j+1}^l Delta_d(x_k))  (j<l)
-\todo{Escribir la EDO con la notación de macros.tex (\texttt{\textbackslash Pmat}, \texttt{\textbackslash Mmat}\ldots) y verificar las fórmulas contra \cite{vo2025token}.}
+Seguimos a \cite{vo2025token} y partimos de la recurrencia de la sección~\ref{sec:ssm}. Al eliminar el estado oculto $h_{dl}$, la salida de cada canal es una combinación lineal de los tokens anteriores, $y_{dl}=\sum_{j\le l}P_{dlj}\,x_{dj}$, con $P_d$ triangular inferior y entradas
+\begin{equation}
+  P_{dlj}=
+  \begin{cases}
+    x_l^{\top}M\,x_l\;\Delta_d(x_l), & j=l,\\[4pt]
+    x_l^{\top}M\,x_j\;\Delta_d(x_j)\,\exp\!\Big(-a_d\displaystyle\sum_{k=j+1}^{l}\Delta_d(x_k)\Big), & j<l,
+  \end{cases}
+  \label{eq:din-P}
+\end{equation}
+donde $M=S_C^{\top}S_B$ es la matriz de entrada-salida. Los autores llaman a $P$ \emph{atención oculta}: es causal y pondera cada token con los anteriores, pero sus filas no están normalizadas y sus entradas pueden ser negativas.
+
+Interpretando el índice de capa como un tiempo $t\ge0$ y conservando solo la capa S6 y la conexión residual (sección~\ref{sec:ssm-limite}), se obtiene la EDO de tokens
+\begin{equation}
+  \frac{\mathrm{d}x_{dl}}{\mathrm{d}t}(t)=\sum_{j=1}^{l}P_{dlj}(t)\,x_{dj}(t),
+  \qquad x_{dl}(0)=x_{dl0}\in\mathbb{R},
+  \label{eq:din-edo}
+\end{equation}
+con $P_{dlj}(t)$ como en \eqref{eq:din-P} evaluada en $x(t)$. Es una simplificación: se ignoran la normalización de capa, la convolución y las capas lineales, y los parámetros no dependen de $t$. Por tanto, los resultados que siguen describen este modelo y no la arquitectura completa.
 
 \subsection{Caso unidimensional}
 \label{sec:din-1d}
 
-\todo{Los tres escenarios: convergencia ($\mu<0$), divergencia lenta ($\mu>0$ y $S_\Delta x_{l0}<0$) y divergencia rápida ($\mu>0$ y $S_\Delta x_{l0}>0$ para algún $l$). Enunciar el teorema con sus hipótesis exactas.}
+Con $D=1$, $M$ es un escalar $\mu=S_C^{\top}S_B$ y $\Delta(u)=\mathrm{softplus}(S_\Delta u)$. Suponemos $x_{l0}\neq0$. Para $l=1$ la EDO es autónoma,
+\begin{equation}
+  \dot{x}_1=\mu\,x_1^{3}\,\Delta(x_1),
+  \label{eq:din-token1}
+\end{equation}
+y los demás tokens se acoplan al primero a través de $P$. El signo de $\mu$ y el de $S_\Delta x_{l0}$ dan tres escenarios \cite{vo2025token}.
+
+\begin{teorema}[Convergencia]\label{thm:din-conv}
+  Si $\mu<0$, cada $x_l(t)$ es monótona hacia $0$ (decreciente si $x_{l0}>0$, creciente si $x_{l0}<0$), con $x_l(t)=O(1/\sqrt{t})$ y $P_{lj}(t)=O(1/t)$.
+\end{teorema}
+
+\begin{teorema}[Divergencia lenta]\label{thm:din-lenta}
+  Si $\mu>0$ y $S_\Delta x_{L0}\le\cdots\le S_\Delta x_{10}\le -2{,}12$, cada $x_l(t)$ crece en valor absoluto, con $x_l(t)=O\big((\ln t)^{l}\big)$ y $P_{lj}(t)\to 0$ cuando $t\to\infty$.
+\end{teorema}
+
+\begin{teorema}[Divergencia rápida]\label{thm:din-rapida}
+  Si $\mu>0$ y algún $S_\Delta x_{l0}>0$, entonces $x_l(t)$ diverge en tiempo finito. Si $x_{l^*}$ es el primer token en divergir, en $T$, entonces $P_{lj}(t)\to+\infty$ cuando $t\to T^-$ si y solo si $l=l^*$ o $j=l^*$.
+\end{teorema}
+
+En el apéndice del paper la constante $-2{,}12$ se afina a $-r_0$, con $r_0\approx2{,}116$. Resumiendo, para $D=1$ los tokens convergen todos a cero ($\mu<0$) o divergen todos ($\mu>0$), despacio o en tiempo finito según el signo de $S_\Delta x_{l0}$ (Figura~\ref{fig:param-escenarios}).
+
+La ecuación \eqref{eq:din-token1} permite precisar la tasa del primer token en el caso convergente. Como $x_1\to0$, $\Delta(x_1)\to\ln2$, y
+\[
+  \frac{\mathrm{d}}{\mathrm{d}t}\,x_1^{-2}=2|\mu|\,\Delta(x_1)\longrightarrow 2|\mu|\ln 2
+  \quad\Longrightarrow\quad
+  \sqrt{t}\,|x_1(t)|\to(2|\mu|\ln 2)^{-1/2}.
+\]
+Este cálculo es nuestro y no aparece en el paper; lo comprobamos en la Figura~\ref{fig:param-tasas} (para $\mu=-1$ el límite es $0{,}849$).
 
 \subsection{Tasas desiguales}
 \label{sec:din-tasas}
 
-\todo{Tasas de convergencia y divergencia por posición (por ejemplo $1/\sqrt{t}$ en convergencia y la cota en $(\ln t)^l$ en divergencia lenta).}
+Los escenarios también se distinguen en cómo se reparten las tasas entre posiciones:
+\begin{itemize}[nosep]
+  \item \textbf{Convergencia.} Todos decaen como $O(1/\sqrt{t})$, pero la constante depende de la posición: en la Figura~\ref{fig:param-tasas}, $\sqrt{t}\,|x_l|$ se estabiliza en $0{,}849$ para el primer token y en torno a $0{,}6$ para el resto.
+  \item \textbf{Divergencia lenta.} La cota $(\ln t)^{l}$ crece con $l$, así que los tokens tardíos pueden crecer mucho más. Aun así, la atención oculta tiende a cero.
+  \item \textbf{Divergencia rápida.} Explotan todos los tokens a partir del primer índice con $S_\Delta x_{l0}>0$; en nuestro ejemplo, primero el de mayor valor inicial.
+\end{itemize}
+Según los autores, estas diferencias hacen que los tokens contribuyan de forma desigual al entrenamiento, y motivan una de sus dos mejoras (sección~\ref{sec:din-mejoras}).
 
 \subsection{Caso general \texorpdfstring{$D>1$}{D>1}}
 \label{sec:din-general}
 
-\todo{Qué se sabe en dimensión mayor que uno y qué queda abierto; enlazar con la sección~\ref{sec:sim-dimension}.}
+El análisis riguroso del paper se limita a $D=1$. Para $D>1$ los autores conjeturan que la dinámica la gobierna la parte simétrica $\mu=\tfrac12(M+M^{\top})$, pues $x^{\top}Mx=x^{\top}\mu\,x$ y sus autovalores son reales: si todos son negativos los tokens convergen a cero y si alguno es positivo divergen. La apoyan con simulaciones en dimensión dos y dejan abierto el caso de $M$ con autovalores complejos. La contrastamos en la sección~\ref{sec:sim-dimension}.
+
+\subsection{Consecuencias para el rendimiento y mejoras propuestas}
+\label{sec:din-mejoras}
+
+En el escenario convergente los tokens y la atención oculta tienden a cero y se pierde diversidad entre tokens. Los autores lo contrastan con un Mamba de 130M en WikiText-103: la perplejidad (menor es mejor) es $17{,}28$, $16{,}82$ y $16{,}66$ si los autovalores de $M$ son solo negativos, mixtos o solo positivos, es decir, el caso convergente es el peor. Es evidencia empírica, no una prueba. De ahí proponen dos mejoras: \emph{excluir el escenario convergente}, restringiendo el signo de los autovalores de $M$ con una parametrización $LDL^{\top}$, y \emph{reordenar los tokens por importancia} con la puntuación $s_l=\langle K,S_\Delta x_{l0}\rangle$ y SoftSort, lo que baja la perplejidad de $16{,}46$ a $14{,}97$ y sube la precisión de MambaVision-T en ImageNet-1K de $81{,}90\,\%$ a $82{,}02\,\%$. Los propios autores advierten de que con normalización de capa la teoría podría no trasladarse al modelo completo.

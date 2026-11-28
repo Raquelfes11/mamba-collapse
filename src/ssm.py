@@ -13,9 +13,6 @@ posición l:
 con M = S_C^T S_B (matriz entrada-salida), Delta_d(u) = softplus(S_{Delta,d} u)
 y A_d = -a_d I con a_d > 0.
 
-Nota: las fórmulas de arriba están tomadas de una lectura del paper y hay que
-comprobarlas contra el PDF antes de usarlas en el documento.
-
 En el caso unidimensional (D = 1) M es un escalar mu y todo depende de su
 signo y del signo de S_Delta * x_{l0}.
 """

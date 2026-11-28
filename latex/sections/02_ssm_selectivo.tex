@@ -1,91 +1,253 @@
 % ============================================================================
 % 2. SSM continuo, discretización y qué hace "selectivo" a Mamba
 % ============================================================================
-\section{Modelos de espacio de estados selectivos}
+\section{Modelos de espacio de estados selectivos: Mamba}
 \label{sec:ssm}
-\subsection{SSMs y mamba teoricos}
+\subsection{Fundamentos de los modelos de espacio de estados}
 
-Debido a la ineficiencia computacional de los Transformers en secuencias largas, surgen los 
-modelos de espacio de estados estructurados (S4). Estos modelos ha dado buenos resultados en 
-dominios con datos continuos; sin embargo, son menos eficaces a la hora de modelar datos con 
-densos y con largos contextos.
+Debido a la elevada complejidad computacional de los Transfomers al procesar secuencias largas, 
+han surgido arquitecturas alternativas basadas en modelos de espacio de estados (\textit{State 
+Space Models}, SSMs). Entre ellas destacan los modelos de espacio de estados estructurados 
+(\textit{Structured State Space Models}, S4), que han obtenido buenos resultados en dominios 
+con datos continuos, como el audio. Sin embargo, los SSMs presentan limitaciones a la hora de 
+modelar dependencias contextuales en secuencias discretas con largos contextos, como las del 
+lenguaje natural.
 
-Gu et. al, \cite{gu2023mamba} identificaron la limitación que tienen estos modelos para seleccionar 
-las entradas en cada momento del tiempo y propusieron un mecanismo de selección para los SSMs. Este 
-mecanismo consistió en hacer los parámetros del modelo depender de la entrada, así el modelo puede 
-decidir en cada instante si la entrada es relevante. Además, junto a este mecanismo, propusieron un nuevo 
-algoritmo para hacer reducir la carga computacional del mecanismo. 
+Gu y Dao \cite{gu2023mamba} identificaron una de las principales limitaciones de estos modelos: 
+su incapacidad de seleccionar dinámicamente qué información de entrada debe de conservarse en el 
+estado oculto en cada momento. Esto se debe a que en los SSMs tradicionales, los parámetros  
+que determinan el estado oculto son independientes de la entrada, lo que dificulta adaptarse a 
+la importancia de cada elemento de la secuencia.
 
-A este conjunto le dieron el nombre de Mamba, una arquitectura de aprendizaje profundo cuyas capas 
-tienen la estrucutura mostrada en la Figura\ref{fig:ss6-layer}
+Para abordar esta limitación, propusieron un mecanismo de selección que hace que los parámetros del
+modelo dependan de la entrada. De este modo, el modelo puede adaptar su comportamiento en cada instante 
+y decidir qué información incorporar al estado y cuál conservar del estado anterior. Además, introdujeron 
+un algoritmo de exploración selectiva (\textit{selective scan}) que permite implementar este mecanismo 
+de manera más eficiente.
 
-[incluir figura con \label{fig:ss6-layer} que se encuentra en figures/SS6_layer.png]
+La arquitectura resultante recibe el nombre de Mamba. Sus bloques combinan capas de espacio de estados 
+selectivas (S6) con otros componentes, como proyecciones lineales, convoluciones y conexiones residuales. 
+La estructura de uno de estos bloques se muestra en la Figura~\ref{fig:ss6-layer}.
 
-De forma continua, los SSMs se entienden como una función que mapea secuencias de entrada, $x(t)\inR$, a 
-secuencias de salida, $y(t)\inR$, a través de un estado latente $h(t)\inR^N$, siguiendo el siguiente 
-sistema de dos ecuaciones:
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.85\linewidth]{figures/SS6_layer.png}
+    \caption{Estructura de un bloque Mamba \cite{grootendorst2024visualmamba}.}
+    \label{fig:ss6-layer}
+\end{figure}
 
-La ecuacion de estado: $h'(t)=A h(t)+B x(t)$, 
-La ecuación de salida: $y(t)=C h(t)+D x(t)$
+Desde una perspectiva continua, un SSM se puede formular como un sistema dinámico que transforma una 
+secuencia de entrada, $x(t)\in\mathbb{R}$, en una secuencia de salida, $y(t)\in\mathbb{R}$, a través de 
+un estado latente $h(t)\in\mathbb{R}^N$. Su comportamiento viene determinado por las siguientes ecuaciones:
 
-Podemos entender el entrenamiento como una discretización del sistema lineal. Al discretizar, tomamos 
-los parámetros continuos ($\triangle$, $A$, $B$) y los convertimos a ($A con linea encima$, $B con linea encima$)
-utilizando las funciones fa(triangulo, A) = Alinea y fb(triangulo, A, B), estas (fa, fb) son las reglas 
-de discretización. 
+\begin{equation}
+\label{eq:ssm-continuous}
+\left\{
+\begin{aligned}
+\text{Ecuación de estado:} \quad h'(t) &= A h(t) + B x(t),\\
+\text{Ecuación de salida:} \quad y(t) &= C h(t) + D x(t),
+\end{aligned}
+\right.
+\end{equation}
 
-\subsection{Mamba en nuestro caso de uso}
+donde $A\in\mathbb{R}^{N\times N}$ es la matriz que gobierna la evolución del estado, $B\in\mathbb{R}^{N\times 1}$ 
+determina cómo influye la entrada en dicho estado, $C\in\mathbb{R}^{1\times N}$ transforma el estado oculto 
+en una salida y $D\in\mathbb{R}$ representa una conexión residual.
 
-Para el análisis que llevamos a cabo en este trabajo basado en \cite{vo2025token}, consideramos el caso de uso del lenguaje. Por ello, 
-nuestra entrada es una secuencia de tokens $x en negrita = (x_1, ..., x_L) \in R^{DxL}$ y la salida es 
-otra secuencia de tokens $y en negrita = (y_1, ..., y_L) \in R^{DxL}$, donde cada vector $x_l$ o $y_l$ son un token. 
-Para cada canal $d = 1, ..., D$, la salida estimada $yhat_d = (y_d1, ..., ydL) \in R^L$ viene determinada 
-por recurrencia por el input del mismo canal $xhat_d = (x_d1, ..., xdL) \in R^L$ a través de una secuencia 
-de estados ocultos $h_d1, ... h_dL \in R^N$ siguiendo las ecuaciones:
+Para procesar secuencias discretas como los tokens, necesitamos discretizar el sistema continuo para 
+convertirlo en una recurrencia. El proceso de discretización transforma los parámetros continuos en sus 
+representaciones discretas, $\overline{A}$ y $\overline{B}$, utilizando un tamaño de paso $\Delta$. A 
+las funciondes de discretización $f_a(\Delta, A) = \overline{A}$ y $f_b(\Delta, B) = \overline{B}$ las 
+denominamos reglas de discretización.
 
-$h_dl = Araya_dl h_d,l-1 + Braya * x_dl, h_d0 = 0$,
-$y_dl = C_l h_dl$,
+En Mamba, el tamaño de paso $\Delta$ y los parámetros se adaptan al contenido de la entrada, lo que 
+da lugar a un SSM selectivo.
 
-para $l=1, ..., L$ capas.
+\subsection{Formulación del modelo Mamba para secuencias}
 
-En este caso, las matrices $A raya_dl$, $B raya_dl$ y $C_dl$ dependen del input y de la capa y están determinadas
-por las siguientes ecuaciones:
+Para el análisis que llevamos a cabo en este trabajo, basado en \cite{vo2025token}, consideramos el caso de 
+uso del lenguaje natural. Por ello, la entrada es una secuencia de $L$ tokens, $\mathbf{x}=(x_1,\ldots,x_L)\in\mathbb{R}^{D\times L}$, 
+y la salida es otra secuencia de la misma dimensión, $\mathbf{y}=(y_1,\ldots,y_L)\in\mathbb{R}^{D\times L}$, 
+donde cada vector $x_l$ o $y_l$ representan un token de dimensión $D$. 
 
-[estas ecuaciones me gustaría que estuviesen centradas]
-$Araya=exp(triangulo_d(x_l)*A_d)$
-$Braya=triangulo_d(x_l)*S_B*x_l$
-$C_l=(S_C*x_l)^T$
+Para cada canal $d=1,\ldots,D$, la salida correspondiente, $\hat{y}_d=(y_{d1},\ldots,y_{dL})\in\mathbb{R}^L$, 
+se obtiene de forma recurrente a partir de la secuencia de entrada del mismo canal, $\hat{x}_d=(x_{d1},\ldots,x_{dL})\in\mathbb{R}^L$, 
+mediante una secuencia de estados ocultos $h_{d1},\ldots,h_{dL}\in\mathbb{R}^N$. El sistema viene determinado por:
 
-donde, $triangulo_d: R^D ---> R$ es la función de tamaño del paso en el canal d y se define como:
-$triangulo_d(u) = softplus(S_{triangulo, d}u) = ln(1 + e^(S_{triangulo, d}u)), u \in R^D$
+\begin{equation}
+\label{eq:s6-recurrence}
+\left\{
+\begin{aligned}
+h_{dl} &= \overline{A}_{dl}h_{d,l-1} + \overline{B}_{dl}x_{dl}, \qquad h_{d0}=0,\\
+y_{dl} &= C_l h_{dl},
+\end{aligned}
+\right.
+\end{equation}
 
-De forma que los parámetros son las matrices $A_d \in R^{NxN}$, $S_{triangulo, d} \in R{1xD}$, $S_B, S_C \in R^{NxD}$.
-Adicionalmente, vamos a definir $A_d$ como una matriz diagonal con autovalores negativos ($A_d = -a_dId$). 
-Esta restricción no va a quitar la flexibilidad que damos al modelo haciéndolo selectivo puesto que la 
-selectividad viene otorgada de la función $triangulo_d(u)$. Esta función va a controlar cuánto importa la entrada 
-$x en negrita$ de forma que si $triangulo_d$ toma un valor gramde, el sistema reseteará h y se centrará en x. 
-Sin embargo si $triangulo_d$ toma un valor bajo, persistirá el estado h y se ignorará el valor de x.
+para $l=1,\ldots,L$. En este caso, las matrices $\overline{A}_{dl}$, $\overline{B}_{dl}$ y $C_l$ dependen de 
+la entrada y, por tanto, varían a lo largo de la secuencia. En concreto, vienen determinadas por:
 
-La matriz que tendrá un rol esencial para el colapso es la matriz de entrada-salida $S_C^T S_B \in R^{DxD}$
+\begin{equation}
+\label{eq:s6-parameters}
+\begin{aligned}
+\overline{A}_{dl} &= e^{\Delta_d(x_l)A_d},\\
+\overline{B}_{dl} &= \Delta_d(x_l)S_Bx_l,\\
+C_l &= (S_Cx_l)^\top.
+\end{aligned}
+\end{equation}
+
+Aquí, $\Delta_d:\mathbb{R}^D\rightarrow\mathbb{R}$ es la función que determina el tamaño del paso en el canal 
+$d$, definida mediante:
+
+\[
+\Delta_d(u) = \operatorname{softplus}(S_{\Delta,d}u) = \ln\left(1+e^{S_{\Delta,d}u}\right), \qquad u\in\mathbb{R}^D.
+\]
+
+Los parámetros del modelo son las matrices $A_d\in\mathbb{R}^{N\times N}$, $S_{\Delta,d}\in\mathbb{R}^{1\times D}$ 
+y $S_B,S_C\in\mathbb{R}^{N\times D}$, que se aprenden durante el entrenamiento.
+
+Adicionalmente, consideramos la parametrización escalar de la matriz $A_d = -a_d I_N, a_d>0$, donde $I_N$ es 
+la matriz identidad de dimensión $N$. Esta elección corresponde a un caso particular de matrices diagonales con 
+autovalores negativos y permite simplificar el análisis de la dinámica del sistema.
+
+Esta restricción no elimina la capacidad de selección del modelo, puesto que esta viene determinada por la 
+dependencia de los parámetros de la entrada que se codifica en la función $\Delta$. Esta función controla el 
+peso relativo del estado anterior y de la entrada actual en la actualización del estado oculto. Cuando $\Delta$ 
+toma valores grandes, la contribución de la entrada tiene mayor relevancia; mientras que si $\Delta$ toma un 
+valor pequeño, el estado anterior se conservará en mayor medida.
+
+Finalmente, la matriz que desempeña un papel esencial en el análisis de la dinámica de los tokens es la matriz 
+de entrada-salida $S_C^\top S_B\in\mathbb{R}^{D\times D}$.
 
 \subsection{Límite continuo en profundidad}
 \label{sec:ssm-limite}
 
-De la misma forma que podemos expresar una capa de una ResNet como:
-$z = x + y(x, \theta)$
-y su representación continua como eñ siguiente sistema dinámico:
+De forma análoga a las redes residuales (\textit{ResNets}), podemos interpretar la evolución de las 
+representaciones a través de las capas de una red como un sistema dinámico continuo. En una ResNet, la
+actualización de una representación entre dos capas consecutivas puede expresarse como:
 
-$x'(t) = y(x(t), \theta(t)), t \in(0, T)$
+\[
+x_{k+1} = x_k + f(x_k, \theta_k)
+\]
 
-también podemos expresar una capa de Mamba en función de una ecuación diferencial ordinaria sobre los tokens.
+donde $f$ representa la transformación residual y $\theta_k$ sus parámetros. Al considerar el límite 
+continuo en profundidad, esta actualización se expresa mediante la siguiente ecuación diferencial:
 
-Para ello, eliminamos el estado oculto $h_{dl}$ y obtenemos:
+\[x'(t) = f(x(t), \theta(t)), \qquad t\in[0,T]\].
 
-\todo{seccion 3.2 del paper}
+De manera análoga, podemos expresar la evolución de las representaciones de los tokens a través de las 
+capas de Mamba mediante un sistema dinámico continuo. Para ello, primero eliminamos el estado oculto de 
+la formulación recurrente de la subsección anterior y obtenemos una expresión directa de la salida en 
+función de la entrada.
 
-\todo{Cómo se llega a la EDO de tokens (solo capa S6 y conexión residual, con la profundidad como tiempo). Esta subsección es el puente hacia la sección~\ref{sec:dinamica}; \todo{Raquel la lee con cuidado}.}
+Partiendo de las ecuaciones~\ref{eq:s6-recurrence}, para un canal $d$ cualquiera, las dos primeras 
+posiciones de la secuencia vienen determinadas por:
 
-% Con A_d = -a_d I, la dimensión de estado N solo entra en la dinámica a través
-% de M = S_C^T S_B (rango <= N). Esto es lo que usa la sección 4.1.
-\begin{observacion}\label{obs:ssm-rango}
-  Con $A_d=-a_d I$, la dimensión de estado $\estado$ interviene en la dinámica solo a través de $\Mmat=\SC\transp\SB\in\R^{D\times D}$, cuyo rango es como mucho $\min(\estado,D)$.
-\end{observacion}
+\[
+h_{d1} = \overline{B}_{d1}x_{d1},\\
+y_{d1} = C_1\overline{B}_{d1}x_{d1},\\[4pt]
+h_{d2} = \overline{A}_{d2}\overline{B}_{d1}x_{d1} + \overline{B}_{d2}x_{d2},\\
+y_{d2} = C_2\overline{A}_{d2}\overline{B}_{d1}x_{d1} + C_2\overline{B}_{d2}x_{d2}.
+\]
+
+Generalizando esta expresión, el estado oculto en la posición $l$ puede escribirse como la suma de las 
+contribuciones de todas las entradas anteriores:
+
+\[
+h_{dl} = \sum_{j=1}^{l}\left(\prod_{k=j+1}^{l}\overline{A}_{dk}\right)\overline{B}_{dj}x_{dj}.
+\]
+
+Por tanto, la salida correspondiente viene dada por:
+
+\[
+y_{dl} = C_l\sum_{j=1}^{l}\left(\prod_{k=j+1}^{l}\overline{A}_{dk}\right)\overline{B}_{dj}x_{dj}.
+\]
+
+De esta forma, podemos interpretar la relación entre la entrada y la salida como una transformación 
+lineal representada por una matriz. En concreto, podemos eliminar el estado oculto y expresar la salida 
+como el producto de una matriz $P_d$ por la entrada:
+
+\begin{equation}
+\label{eq:discrete-limit}
+\begin{aligned}
+y_{dl} &= \sum_{j=1}^{l}P_{dlj}x_dj,\\
+\hat{y}_d &= P_d\hat{x}_d,
+\end{aligned}
+\end{equation}
+
+donde $\hat{y}_d=(y_{d1},\ldots,y_{dL})^\top$, $\hat{x}_d=(x_{d1},\ldots,x_{dL})^\top$ y $P_d\in\mathbb{R}^{L\times L}$ 
+es una matriz triangular inferior definida por:
+
+\begin{equation}
+\label{eq:p-matrix}
+P_d =
+\begin{bmatrix}
+C_1\overline{B}_{d1} & 0 & \cdots & 0 \\
+C_2\overline{A}_{d2}\overline{B}_{d1} & C_2\overline{B}_{d2} & \cdots & 0 \\
+\vdots & \vdots & \ddots & \vdots \\
+C_L\displaystyle\prod_{k=2}^{L}\overline{A}_{dk}\,\overline{B}_{d1} & 
+C_L\displaystyle\prod_{k=3}^{L}\overline{A}_{dk}\,\overline{B}_{d2} & 
+\cdots & C_L\overline{B}_{dL}
+\end{bmatrix}
+\end{equation} 
+
+A continuación, desarrollamos los términos de esta matriz utilizando las expresiones definidas en la 
+ecuación~\ref{eq:s6-parameters}. En primer lugar, los elementos de la diagonal vienen dados por:
+
+\[
+C_l\overline{B}_{dl} = (S_Cx_l)^\top \Delta_d(x_l)S_Bx_l =  x_l^\top (S_C^\top S_B)x_l \Delta_d(x_l),
+\]
+
+donde $\Delta_d(x_l)\in\mathbb{R}$ por lo que se puede intercambiar su posición en el producto.
+
+Para los elementos fuera de la diagonal, con $l>j$, obtenemos:
+
+\[
+C_l\left(\prod_{k=j+1}^{l}\overline{A}_{dk}\right)\overline{B}_{dj} = 
+(S_Cx_l)^\top \left(\prod_{k=j+1}^{l}e^{\Delta_d(x_k)A_d}\right) \Delta_d(x_j)S_Bx_j
+\]
+
+Simplificamos el producto de exponenciales aplicando sus propiedades y utilizando la parametrización de la 
+matriz $A_d$ como $A_d=-a_dI_N$:
+
+\[
+\prod_{k=j+1}^{l}e^{\Delta_d(x_k)A_d} = e^{\left(\sum{k=j+1}^{l}\Delta_d(x_k)A_d\right)} = 
+e^{\left(-a_d\sum{k=j+1}^{l}\Delta_d(x_k)\right)}
+\]
+
+Por lo tanto, como $\Delta_d(x_j)$ y $e^{\left(-a_d\sum{k=j+1}^{l}\Delta_d(x_k)\right)}$ son escalares, 
+podemos agruparlos a la derecha del producto y expresar los términos de la matriz $P_d$ en función de 
+las entradas, de la matriz $S_C^\top S_B$ y de los escalares.
+
+De esta forma, obtenemos la expresión general de sus elementos:
+
+\begin{equation}
+\label{eq:p-dlj}
+P_{dlj} =
+\begin{cases}
+x_l^\top (S_C^\top S_B)x_l \cdot \Delta_d(x_l),
+& \text{si } l=j,\\[6pt]
+x_l^\top (S_C^\top S_B)x_j \cdot \Delta_d(x_j)
+\cdot \exp\left(-a_d\displaystyle\sum_{k=j+1}^{l}
+\Delta_d(x_k)\right),
+& \text{si } l>j,\\[6pt]
+0,
+& \text{si } l<j.
+\end{cases}
+\end{equation}
+
+Finalmente, podemos considerar el índice de profundidad de la red como una variable continua $t$. En 
+este límite, las representaciones de los tokens evolucionan de acuerdo con un sistema dinámico cuya 
+matriz de interacción viene determinada por $P_d$. Así, la evolución del sistema puede expresarse como:
+
+\begin{equation}
+\label{eq:state-dynamics}
+\begin{aligned}
+\frac{d}{dt}x_{dl}(t) &= \sum_{j=1}^{l} P_{dlj}(t)x_{dj}(t),
+\qquad l=1,\ldots,L; t \in [0,+\infty),\\
+x_{dl}(0) &= x_{dl0} \in \mathbb{R}.
+\end{aligned}
+\end{equation}
+
+Este es el sistema dinámico cuya estabilidad y cuyos posibles fenómenos de colapso estudiaremos en las 
+siguientes secciones.

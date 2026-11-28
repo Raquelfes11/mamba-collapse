@@ -3,39 +3,6 @@
 % ============================================================================
 \section{Modelos de espacio de estados selectivos: Mamba}
 \label{sec:ssm}
-\subsection{Fundamentos de los modelos de espacio de estados}
-
-Debido a la elevada complejidad computacional de los Transfomers al procesar secuencias largas, 
-han surgido arquitecturas alternativas basadas en modelos de espacio de estados (\textit{State 
-Space Models}, SSMs). Entre ellas destacan los modelos de espacio de estados estructurados 
-(\textit{Structured State Space Models}, S4), que han obtenido buenos resultados en dominios 
-con datos continuos, como el audio. Sin embargo, los SSMs presentan limitaciones a la hora de 
-modelar dependencias contextuales en secuencias discretas con largos contextos, como las del 
-lenguaje natural.
-
-Gu y Dao \cite{gu2023mamba} identificaron una de las principales limitaciones de estos modelos: 
-su incapacidad de seleccionar dinámicamente qué información de entrada debe de conservarse en el 
-estado oculto en cada momento. Esto se debe a que en los SSMs tradicionales, los parámetros  
-que determinan el estado oculto son independientes de la entrada, lo que dificulta adaptarse a 
-la importancia de cada elemento de la secuencia.
-
-Para abordar esta limitación, propusieron un mecanismo de selección que hace que los parámetros del
-modelo dependan de la entrada. De este modo, el modelo puede adaptar su comportamiento en cada instante 
-y decidir qué información incorporar al estado y cuál conservar del estado anterior. Además, introdujeron 
-un algoritmo de exploración selectiva (\textit{selective scan}) que permite implementar este mecanismo 
-de manera más eficiente.
-
-La arquitectura resultante recibe el nombre de Mamba. Sus bloques combinan capas de espacio de estados 
-selectivas (S6) con otros componentes, como proyecciones lineales, convoluciones y conexiones residuales. 
-La estructura de uno de estos bloques se muestra en la Figura~\ref{fig:ss6-layer}.
-
-\begin{figure}[htbp]
-    \centering
-    \includegraphics[width=0.85\linewidth]{figures/SS6_layer.png}
-    \caption{Estructura de un bloque Mamba \cite{grootendorst2024visualmamba}.}
-    \label{fig:ss6-layer}
-\end{figure}
-
 Desde una perspectiva continua, un SSM se puede formular como un sistema dinámico que transforma una 
 secuencia de entrada, $x(t)\in\mathbb{R}$, en una secuencia de salida, $y(t)\in\mathbb{R}$, a través de 
 un estado latente $h(t)\in\mathbb{R}^N$. Su comportamiento viene determinado por las siguientes ecuaciones:
@@ -65,8 +32,8 @@ da lugar a un SSM selectivo.
 
 \subsection{Formulación del modelo Mamba para secuencias}
 
-Para el análisis que llevamos a cabo en este trabajo, basado en \cite{vo2025token}, consideramos el caso de 
-uso del lenguaje natural. Por ello, la entrada es una secuencia de $L$ tokens, $\mathbf{x}=(x_1,\ldots,x_L)\in\mathbb{R}^{D\times L}$, 
+Para el análisis que desarrollamos en este trabajo, siguiendo a \cite{vo2025token}, consideramos el caso de 
+uso del procesamiento del lenguaje natural. Por ello, la entrada es una secuencia de $L$ tokens, $\mathbf{x}=(x_1,\ldots,x_L)\in\mathbb{R}^{D\times L}$, 
 y la salida es otra secuencia de la misma dimensión, $\mathbf{y}=(y_1,\ldots,y_L)\in\mathbb{R}^{D\times L}$, 
 donde cada vector $x_l$ o $y_l$ representan un token de dimensión $D$. 
 
@@ -170,7 +137,7 @@ como el producto de una matriz $P_d$ por la entrada:
 \begin{equation}
 \label{eq:discrete-limit}
 \begin{aligned}
-y_{dl} &= \sum_{j=1}^{l}P_{dlj}x_dj,\\
+y_{dl} &= \sum_{j=1}^{l}P_{dlj}x_{dj},\\
 \hat{y}_d &= P_d\hat{x}_d,
 \end{aligned}
 \end{equation}

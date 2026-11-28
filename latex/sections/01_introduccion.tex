@@ -1,19 +1,20 @@
 % ============================================================================
 % 1. Introducción y recordatorio de self-attention
-% Responsable: \todo{decidir: Isabel o Raquel}
-% Prefijo de etiquetas: sec:intro-, fig:intro-, eq:intro-
 % ============================================================================
 \section{Introducción}
 \label{sec:intro}
 
-\todo{Motivación: modelos de espacio de estados selectivos (Mamba \cite{gu2023mamba}) como alternativa a self-attention \cite{vaswani2017attention}; colapso de representaciones. Objetivo del trabajo y referencia principal \cite{vo2025token}.}
+Los modelos basados en \textit{Transformers} alcanzan un alto rendimiento en el procesamiento de secuencias, 
+aunque su coste computacional aumenta considerablemente con la longitud de estas. Como alternativa, han 
+surgido arquitecturas basadas en modelos de espacio de estados (\textit{State Space Models}, SSMs), que 
+permiten procesar secuencias largas más eficientemente. Sin embargo, los SSMs tradicionales presentan 
+limitaciones para seleccionar dinámicamente la información relevante en secuencias como las del lenguaje natural.
 
-\subsection{Recordatorio de self-attention}
-\label{sec:intro-attention}
+Para abordar esta limitación, Gu y Dao \cite{gu2023mamba} introdujeron Mamba, una arquitectura que incorpora 
+un mecanismo de selección dependiente de la entrada. Este permite adaptar los parámetros en cada posición de 
+la secuencia, controlando así qué información se incorpora al estado oculto y cuál se conserva del estado 
+anterior.
 
-\todo{Definición de self-attention, su lectura como sistema dinámico de tokens y qué se entiende por colapso en ese caso. Fijar aquí la notación que usará la tabla comparativa de la sección~\ref{sec:comparacion}.}
-
-\subsection{Organización del documento}
-\label{sec:intro-organizacion}
-
-\todo{Un párrafo describiendo las secciones, al final cuando el resto esté escrito.}
+En este trabajo, analizamos la dinámica de los tokens en Mamba a partir del estudio de Vo et al. \cite{vo2025token}. 
+En particular, estudiamos los fenómenos de convergencia y divergencia de las representaciones, 
+así como las condiciones y los factores que determinan su comportamiento.
